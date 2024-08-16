@@ -28,7 +28,7 @@ def translate_text(text, target_language):
 
 def get_weather(city_name, language_code):
     # Use OpenWeatherMap API
-    api_key = '11aadbe8c1069f916e29aea3edd36110'
+    api_key = 'YOUR API KEY'
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={api_key}&units=metric"
     response = requests.get(url)
     data = response.json()
@@ -48,7 +48,7 @@ def get_weather(city_name, language_code):
 # Function to get Market price
 def get_market_price(commodity, language_code):
     api_url = f'https://api.api-ninjas.com/v1/commodityprice?name={commodity}'
-    headers = {'X-Api-Key': '0g8NxxBZh+bXo/f3plS//g==XypNrhl6yV42Sa9h'}
+    headers = {'X-Api-Key': 'YOUR API KEY'}
     response = requests.get(api_url, headers=headers)
     
     if response.status_code == requests.codes.ok:
