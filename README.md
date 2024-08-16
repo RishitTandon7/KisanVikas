@@ -65,3 +65,7 @@ Twilio for providing the WhatsApp API.
 Google Translate for translation services.
 OpenWeatherMap for weather data.
 Ninja API for market price data.
+
+
+
+This `README.md` file provides an overview of the project, installation instructions, usage guidelines, and information on contributing to the project. Make sure to replace placeholders like `'YOUR_OPENWEATHERMAP_API_KEY'` and `'YOUR_API_NINJAS_KEY'` with the actual API keys in the code section and update the repository link in the cloning step.
