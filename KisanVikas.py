@@ -20,20 +20,20 @@ language_options = {
     "5": ("te", "భాష తెలుగు లో సెట్ చేయబడింది.")
 }
 
+# Convert text to target language
 def translate_text(text, target_language):
     if target_language == 'en':
         return text  
     translation = translator.translate(text, dest=target_language)
     return translation.text
 
+# Function to get weather info
 def get_weather(city_name, language_code):
     # Use OpenWeatherMap API
-    api_key = 'YOUR API KEY'
+    api_key = '11aadbe8c1069f916e29aea3edd36110'
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={api_key}&units=metric"
     response = requests.get(url)
     data = response.json()
-    
-    # Debugging information
     print(f"Weather API Response: {data}")
     
     if data.get('cod') != 200:
@@ -48,7 +48,7 @@ def get_weather(city_name, language_code):
 # Function to get Market price
 def get_market_price(commodity, language_code):
     api_url = f'https://api.api-ninjas.com/v1/commodityprice?name={commodity}'
-    headers = {'X-Api-Key': 'YOUR API KEY'}
+    headers = {'X-Api-Key': '0g8NxxBZh+bXo/f3plS//g==XypNrhl6yV42Sa9h'}
     response = requests.get(api_url, headers=headers)
     
     if response.status_code == requests.codes.ok:
@@ -111,12 +111,10 @@ def get_soil_health_response(stage, language_code):
     message = responses.get(stage, "Sorry, I couldn't process your request.")
     return translate_text(message, language_code)
 
-@app.route("/whatsapp", methods=['POST'])  # Main code starts here
+@app.route("/whatsapp", methods=['POST'])
 def whatsapp_reply():
-    
     incoming_msg = request.values.get('Body', '').strip().lower()
     user_number = request.values.get('From', '')
-    media_url = request.values.get('MediaUrl0', '')
     response = MessagingResponse()
 
     # Check if user is ending the conversation
@@ -137,6 +135,7 @@ def whatsapp_reply():
             language_code, welcome_message = language_options[incoming_msg]
             user_language_preferences[user_number] = language_code
             response.message(translate_text(f"{welcome_message} Welcome to KisanVikas! 🌾 We're here to assist you with all your farming needs.", language_code))
+            response.message(get_response_message(language_code, "kisanvikas"))
         else:
             # Prompt user to select language
             response.message(
@@ -151,40 +150,40 @@ def whatsapp_reply():
         # Get the user's preferred language
         language_code = user_language_preferences[user_number]
 
-        # Handle "KisanVikas" to select feature
-        if incoming_msg == "kisanvikas":
-            response_message = get_response_message(language_code, "kisanvikas")
-            response.message(response_message)
-        elif incoming_msg == "1":
+        # Handle menu options
+        if incoming_msg == "1":
+            # Handle crop disease detection
             response_message = get_response_message(language_code, "detection")
             response.message(response_message)
         elif incoming_msg == "2":
+            # Handle irrigation management
             response_message = get_response_message(language_code, "irrigation")
             response.message(response_message)
-        elif incoming_msg == "3":  # Soil Health Monitoring option
+        elif incoming_msg == "3":
+            # Handle soil health monitoring
             stage = user_soil_health_stage.get(user_number, "start")
             response_message = get_soil_health_response(stage, language_code)
             response.message(response_message)
 
             # Update the conversation stage based on user input
             if stage == "start":
-                if incoming_msg in ["yes", "no"]:
-                    if incoming_msg == "yes":
+                if incoming_msg in ["1", "2"]:  # "1" for Yes, "2" for No
+                    if incoming_msg == "1":
                         user_soil_health_stage[user_number] = "ph_check"
                     else:
                         user_soil_health_stage[user_number] = "soil_type"
             elif stage == "soil_type":
                 user_soil_health_stage[user_number] = "ph_check"
             elif stage == "ph_check":
-                if incoming_msg in ["yes", "no"]:
-                    if incoming_msg == "yes":
+                if incoming_msg in ["1", "2"]:
+                    if incoming_msg == "1":
                         user_soil_health_stage[user_number] = "ph_value"
                     else:
                         user_soil_health_stage[user_number] = "fertility_check"
             elif stage == "ph_value":
                 user_soil_health_stage[user_number] = "fertility_check"
             elif stage == "fertility_check":
-                if incoming_msg in ["yes", "no"]:
+                if incoming_msg in ["1", "2"]:
                     user_soil_health_stage[user_number] = "final_advice"
             elif stage == "final_advice":
                 # Provide final advice and reset the stage
@@ -192,23 +191,34 @@ def whatsapp_reply():
                 response.message(final_advice)
                 user_soil_health_stage[user_number] = "start"
         elif incoming_msg == "4":
+            # User pressed 4, so they want market info
             response_message = get_response_message(language_code, "market")
             response.message(response_message)
+            user_soil_health_stage[user_number] = "awaiting_commodity"  # Set state to await commodity input
         elif incoming_msg == "5":
+            # User pressed 5, so they want weather info
             response_message = get_response_message(language_code, "weather")
             response.message(response_message)
+            user_soil_health_stage[user_number] = "awaiting_city"  # Set state to await city input
         else:
-            # If no specific input, treat it as either a location for weather or commodity for market price
-            if "market" in incoming_msg:
-                commodity = incoming_msg.replace("market", "").strip()
+            # Handle user input based on the expected state
+            current_stage = user_soil_health_stage.get(user_number)
+            if current_stage == "awaiting_commodity":
+                commodity = incoming_msg
                 market_price_info = get_market_price(commodity, language_code)
                 response.message(market_price_info)
-            else:
-                # Assuming it's a city name for weather
-                weather_info = get_weather(incoming_msg, language_code)
+                user_soil_health_stage[user_number] = "start"  # Reset the stage
+            elif current_stage == "awaiting_city":
+                city_name = incoming_msg
+                weather_info = get_weather(city_name, language_code)
                 response.message(weather_info)
-
+                user_soil_health_stage[user_number] = "start"  # Reset the stage
+            else:
+                # Handle invalid options
+                response.message("Invalid option. Please choose a valid menu option from 1 to 5.")
+    
     return str(response)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
